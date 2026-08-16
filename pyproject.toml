@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "otforge"
-version = "0.1.0"
-description = "OT/ICS detection-engineering pipeline: protocol-accurate synthetic telemetry, detection synthesis, and false-positive validation."
+version = "0.2.0"
+description = "OT/ICS detection-engineering pipeline: protocol-accurate synthetic telemetry, fuzz-driven discovery, detection synthesis with false-positive validation, and labelled Modbus/TCP capture datasets."
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "Apache-2.0" }
