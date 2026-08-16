@@ -91,22 +91,26 @@ def _fuzz(args) -> int:
 
 
 def _pcap(args) -> int:
-    events = build_scenario(MODBUS_PROFILE, benign=args.benign, attacks=args.attacks, seed=args.seed)
+    profile = PROFILES[args.protocol]
+    events = build_scenario(profile, benign=args.benign, attacks=args.attacks, seed=args.seed)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    pcap_path = out / "otforge-modbus.pcap"
+    base = f"otforge-{args.protocol}"
+    pcap_path = out / f"{base}.pcap"
     ground = write_pcap(events, str(pcap_path))
-    (out / "otforge-modbus.groundtruth.json").write_text(json.dumps(ground, indent=2) + "\n", encoding="utf-8")
-    (out / "otforge-modbus.GROUND_TRUTH.md").write_text(ground_truth(events) + "\n", encoding="utf-8")
+    (out / f"{base}.groundtruth.json").write_text(json.dumps(ground, indent=2) + "\n", encoding="utf-8")
+    (out / f"{base}.GROUND_TRUTH.md").write_text(ground_truth(events) + "\n", encoding="utf-8")
 
     malicious = sum(1 for g in ground if g["label"] == "malicious")
+    port = 502 if args.protocol == "modbus" else 20000
+    label = "Modbus" if args.protocol == "modbus" else "DNP3"
     print()
-    print("  otforge  Labelled Modbus/TCP capture dataset")
+    print(f"  otforge  Labelled {label}/TCP capture dataset")
     print("  " + "=" * 58)
     print(f"  Wrote     : {pcap_path}")
     print(f"  Packets   : {len(ground)}  ({len(ground) - malicious} benign, {malicious} malicious)")
-    print(f"  Framing   : Ethernet / IPv4 / TCP:502 / Modbus (valid checksums)")
-    print(f"  Labels    : otforge-modbus.groundtruth.json + GROUND_TRUTH.md")
+    print(f"  Framing   : Ethernet / IPv4 / TCP:{port} / {label} (valid checksums)")
+    print(f"  Labels    : {base}.groundtruth.json + GROUND_TRUTH.md")
     print(f"  Open in Wireshark; every packet is dissectable, every attack is labelled.")
     print()
     return 0
@@ -129,7 +133,8 @@ def main(argv=None) -> int:
     fz.add_argument("--seed", type=int, default=1337)
     fz.add_argument("--out", type=str, default="", help="directory for crashes.json and detections.yara")
 
-    pc = sub.add_parser("pcap", help="generate a labelled Modbus/TCP capture dataset (.pcap + ground truth)")
+    pc = sub.add_parser("pcap", help="generate a labelled OT capture dataset (.pcap + ground truth)")
+    pc.add_argument("--protocol", choices=["modbus", "dnp3"], default="modbus")
     pc.add_argument("--benign", type=int, default=200)
     pc.add_argument("--attacks", type=int, default=80)
     pc.add_argument("--seed", type=int, default=7)
