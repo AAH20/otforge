@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "otforge"
+version = "0.1.0"
+description = "OT/ICS detection-engineering pipeline: protocol-accurate synthetic telemetry, detection synthesis, and false-positive validation."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Ahmed Hassan" }]
+keywords = ["ics", "ot", "modbus", "detection-engineering", "false-positive", "sigma", "threat-detection"]
+dependencies = []
+
+[project.scripts]
+otforge = "otforge_cli.main:main"
+
+[tool.setuptools.packages.find]
+where = ["packages"]
