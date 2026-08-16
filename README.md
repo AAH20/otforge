@@ -60,8 +60,38 @@ packages/
   otforge_detect     detection synthesis; rules are portable data + an evaluator
   otforge_validate   recall + false-positive scoring, hold/deploy, auto-refinement
   otforge_emit       vendor-neutral Suricata and Sigma emitters
-  otforge_cli        the `otforge` command
+  otforge_target     a self-contained, deliberately-vulnerable file parser (fuzz target)
+  otforge_fuzz       mutational fuzzer + crash triage (discovery)
+  otforge_yara       detection synthesis + false-positive validation for file formats
+  otforge_cli        the `otforge` command (`run` and `fuzz`)
 ```
+
+## The discovery engine (`otforge fuzz`)
+
+The same discipline, one layer earlier: instead of *supplied* attacks, **find** them.
+`otforge fuzz` mutates a valid seed against a target parser, triages the crashes by
+class, then synthesizes and false-positive-validates a detection for each — the full
+**discovery → triage → detection** loop.
+
+```
+$ otforge fuzz
+
+  otforge  Fuzz -> Triage -> Detection Engine
+  Fuzzing   : 6000 inputs, 3316 crashes, 4 unique bug classes
+  ------------------------------------------------------------------
+  BUG CLASS           SEVERITY         FOUND  RECALL    FP  DECISION
+  ------------------------------------------------------------------
+  oob_read            memory-safety     2512    100%    0%  DEPLOY
+  type_confusion      memory-safety      621    100%    0%  DEPLOY
+  resource_exhaustion denial-of-service   136    100%    0%  DEPLOY
+  null_handler        memory-safety       47    100%    0%  DEPLOY
+```
+
+The target here is a **self-contained demonstration parser** (`otforge_target`) with
+real bug *classes* — not a real product, and no CVE is claimed. It exists to prove the
+loop runs on real crashes it really found. Pointing the same harness at a real parser
+(e.g. ClamAV's) is discovery work with a real toolchain; that is the roadmap, not a
+claim in this repo.
 
 This is the substance behind the [Aegis_CM_Swarm](https://github.com/AAH20/Aegis_CM_Swarm) observe→analyze→act pattern: the generator is the adversary/observer, the validator is the commander that decides what is safe to deploy. Every run is reproducible; invariants are enforced by `python3 tests/test_pipeline.py`.
 

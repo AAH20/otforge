@@ -3,14 +3,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from pathlib import Path
 
 from otforge_detect import synthesize_rules
 from otforge_emit import emit_all
+from otforge_fuzz import fuzz
 from otforge_generate import generate_dataset
 from otforge_profiles import PROFILES
+from otforge_target import build_valid
 from otforge_validate import run_pipeline
+from otforge_yara import validate_detection
 
 
 def _print_report(manifest: dict, protocol: str) -> None:
@@ -44,6 +48,46 @@ def _print_report(manifest: dict, protocol: str) -> None:
     print()
 
 
+def _fuzz(args) -> int:
+    result = fuzz(args.iterations, random.Random(args.seed))
+    benign = [build_valid(bytes([65 + i]) * (i + 1), rc) for i in range(6) for rc in (1, 8, 32, 64)]
+    detections, yara_blocks = [], []
+    for klass, info in result["classes"].items():
+        d = validate_detection(klass, info["samples"], benign)
+        d["crashes_found"] = info["count"]
+        d["severity"] = info["severity"]
+        yara_blocks.append(d.pop("yara"))
+        detections.append(d)
+
+    print()
+    print("  otforge  Fuzz -> Triage -> Detection Engine")
+    print("  " + "=" * 66)
+    print(f"  Target    : OTF1 demo parser (self-contained, deliberately vulnerable)")
+    print(f"  Fuzzing   : {result['executed']} inputs, {result['crashed']} crashes, "
+          f"{len(result['unique_classes'])} unique bug classes")
+    print("  " + "-" * 66)
+    print(f"  {'BUG CLASS':<20}{'SEVERITY':<16}{'FOUND':>6}{'RECALL':>8}{'FP':>6}  DECISION")
+    print("  " + "-" * 66)
+    for d in detections:
+        print(f"  {d['detects']:<20}{d['severity']:<16}{d['crashes_found']:>6}"
+              f"{d['recall']*100:>7.0f}%{d['false_positive_rate']*100:>5.0f}%  {d['decision'].upper()}")
+    print("  " + "-" * 66)
+    print("  Detection synthesized per bug class and false-positive-validated against a")
+    print("  benign corpus. Target is a demonstration parser; the same loop points at")
+    print("  real parsers next (that is discovery work, not claimed here).")
+    print()
+
+    if args.out:
+        out = Path(args.out)
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "crashes.json").write_text(
+            json.dumps({"executed": result["executed"], "crashed": result["crashed"],
+                        "detections": detections}, indent=2) + "\n", encoding="utf-8")
+        (out / "detections.yara").write_text("\n\n".join(yara_blocks) + "\n", encoding="utf-8")
+        print(f"  wrote crashes.json, detections.yara to {out}/")
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="otforge", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -55,8 +99,16 @@ def main(argv=None) -> int:
     run.add_argument("--emit", choices=["suricata", "sigma"], help="also write rules in this format")
     run.add_argument("--out", type=str, default="", help="directory for evidence.json, rules.json and emitted rules")
     run.add_argument("--json", action="store_true", help="print the machine-readable manifest only")
+
+    fz = sub.add_parser("fuzz", help="fuzz the demo parser, triage crashes, synthesize + validate detection")
+    fz.add_argument("--iterations", type=int, default=6000)
+    fz.add_argument("--seed", type=int, default=1337)
+    fz.add_argument("--out", type=str, default="", help="directory for crashes.json and detections.yara")
+
     args = parser.parse_args(argv)
 
+    if args.command == "fuzz":
+        return _fuzz(args)
     if args.command == "run":
         profile = PROFILES[args.protocol]
         records = generate_dataset(args.benign, args.attacks, profile, args.seed)
