@@ -63,8 +63,29 @@ packages/
   otforge_target     a self-contained, deliberately-vulnerable file parser (fuzz target)
   otforge_fuzz       mutational fuzzer + crash triage (discovery)
   otforge_yara       detection synthesis + false-positive validation for file formats
-  otforge_cli        the `otforge` command (`run` and `fuzz`)
+  otforge_scenario   canonical OT events + correlated Zeek/syslog/JSON emitters
+  otforge_pcap       real Modbus/TCP capture generation (valid checksums, labelled)
+  otforge_cli        the `otforge` command (`run`, `fuzz`, `pcap`)
 ```
+
+## Labelled capture datasets (`otforge pcap`)
+
+Realistic, labelled OT captures are scarce — so generate them. `otforge pcap` writes a
+genuine, Wireshark-dissectable **Modbus/TCP** capture (Ethernet / IPv4 / TCP:502 /
+Modbus, with correct IP and TCP checksums), one packet per scenario event, plus a
+ground-truth manifest labelling every packet benign/malicious with its ATT&CK-for-ICS
+technique. Attack packets are well-framed but carry the malicious content on the wire
+(illegal function code, write to a protected register, out-of-range read, over-spec count).
+
+```bash
+otforge pcap --out out
+# out/otforge-modbus.pcap                (open in Wireshark)
+# out/otforge-modbus.groundtruth.json    (per-packet labels)
+# out/otforge-modbus.GROUND_TRUTH.md     (scenario summary)
+```
+
+Packet correctness is enforced by tests that recompute the IP and TCP checksums from the
+written file. Scope is Modbus/TCP, encoded correctly; DNP3/BACnet PDU encoding is next.
 
 ## The discovery engine (`otforge fuzz`)
 
