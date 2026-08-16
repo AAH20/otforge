@@ -131,6 +131,19 @@ This is the substance behind the [Aegis_CM_Swarm](https://github.com/AAH20/Aegis
 3. Add DNP3, BACnet, and OPC-UA profiles.
 4. Emit Suricata and Sigma directly, with the false-positive evidence attached.
 
+## From open engine to continuous monitoring
+
+otforge is free and open — the detection logic, the labelled datasets, the
+fuzz-to-detection loop. What it does **not** do is validate these detections against
+*your* real OT environment, engineer the remediation, or keep watch after the assessment
+ends.
+
+That is the paid follow-on: **continuous OT/ICS trust monitoring**, where the value is
+concrete and measurable — fewer analyst hours lost to false positives, and unplanned
+downtime caught before it stops a line. Not revenue; cost and risk avoided.
+
+→ [a2zsoc.com — Continuous Trust monitoring](https://a2zsoc.com/productized-services?utm_source=github&utm_medium=readme&utm_campaign=otforge)
+
 ## License
 
 Apache-2.0.
