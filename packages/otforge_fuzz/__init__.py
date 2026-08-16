@@ -1,16 +1,17 @@
 """A small deterministic mutational fuzzer + crash triage.
 
-Mutates a valid seed one byte (or a truncation) at a time, runs the target
-parser, and collects the crashes by class. This is Layer 1 (discovery) and the
-triage half of Layer 2 of the engine: it turns raw inputs into deduplicated,
+`fuzz_callable` drives ANY parser: you supply the target function, a seed, and an
+`is_crash(exc)` classifier that returns a bug-class name or None for an expected
+rejection. `fuzz` is the demo-target convenience wrapper. This is Layer 1
+(discovery) and the triage half of Layer 2: raw inputs become deduplicated,
 classified, reproducible crashes.
 """
 from __future__ import annotations
 
 import random
-from typing import Dict, List
+from typing import Callable, Dict, Optional
 
-from otforge_target import Crash, Rejected, build_valid, parse
+from otforge_target import Crash, build_valid, parse
 
 SEVERITY = {
     "oob_read": "memory-safety",
@@ -36,23 +37,30 @@ def mutate(data: bytes, rng: random.Random) -> bytes:
     return bytes(b)
 
 
-def fuzz(iterations: int, rng: random.Random, seed_bytes: bytes = None, keep: int = 40) -> Dict:
-    seed = seed_bytes if seed_bytes is not None else build_valid()
+def fuzz_callable(
+    target: Callable[[bytes], object],
+    seed: bytes,
+    is_crash: Callable[[BaseException], Optional[str]],
+    iterations: int,
+    rng: random.Random,
+    keep: int = 40,
+) -> Dict:
     classes: Dict[str, Dict] = {}
     executed = crashed = 0
     for _ in range(iterations):
         inp = mutate(seed, rng)
         executed += 1
         try:
-            parse(inp)
-        except Crash as c:
+            target(inp)
+        except Exception as exc:                        # noqa: BLE001 - a fuzzer catches everything
+            klass = is_crash(exc)
+            if klass is None:
+                continue                                # expected rejection, not a crash
             crashed += 1
-            entry = classes.setdefault(c.klass, {"count": 0, "samples": []})
+            entry = classes.setdefault(klass, {"count": 0, "samples": []})
             entry["count"] += 1
             if len(entry["samples"]) < keep:
                 entry["samples"].append(inp)
-        except Rejected:
-            pass
     return {
         "executed": executed,
         "crashed": crashed,
@@ -62,3 +70,12 @@ def fuzz(iterations: int, rng: random.Random, seed_bytes: bytes = None, keep: in
             for k, v in classes.items()
         },
     }
+
+
+def _demo_is_crash(exc: BaseException) -> Optional[str]:
+    return exc.klass if isinstance(exc, Crash) else None
+
+
+def fuzz(iterations: int, rng: random.Random, seed_bytes: bytes = None, keep: int = 40) -> Dict:
+    seed = seed_bytes if seed_bytes is not None else build_valid()
+    return fuzz_callable(parse, seed, _demo_is_crash, iterations, rng, keep)
