@@ -13,6 +13,7 @@ from otforge_fuzz import fuzz
 from otforge_generate import generate_dataset
 from otforge_pcap import write_pcap
 from otforge_profiles import MODBUS_PROFILE, PROFILES
+from otforge_rules import all_rules, render_rules_md, rules_text, validate as validate_rules
 from otforge_scenario import build_scenario, ground_truth
 from otforge_target import build_valid
 from otforge_validate import run_pipeline
@@ -116,6 +117,27 @@ def _pcap(args) -> int:
     return 0
 
 
+def _rules(args) -> int:
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "otforge-modbus.rules").write_text(rules_text("modbus"), encoding="utf-8")
+    (out / "otforge-dnp3.rules").write_text(rules_text("dnp3"), encoding="utf-8")
+    report = validate_rules(all_rules())
+    (out / "RULES.md").write_text(render_rules_md(report), encoding="utf-8")
+
+    fp = sum(e["false_positives"] for e in report)
+    tp = sum(e["true_positives"] for e in report)
+    print()
+    print("  otforge  OT Suricata rules (false-positive-validated)")
+    print("  " + "=" * 60)
+    print(f"  Rules     : {len(report)} ({sum(1 for e in report if e['protocol']=='modbus')} modbus, "
+          f"{sum(1 for e in report if e['protocol']=='dnp3')} dnp3)")
+    print(f"  Validated : {tp} true positives, {fp} false positives, against labelled datasets")
+    print(f"  Wrote     : otforge-modbus.rules, otforge-dnp3.rules, RULES.md to {out}/")
+    print()
+    return 0
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="otforge", description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -140,12 +162,17 @@ def main(argv=None) -> int:
     pc.add_argument("--seed", type=int, default=7)
     pc.add_argument("--out", type=str, default="out", help="output directory")
 
+    rl = sub.add_parser("rules", help="emit false-positive-validated OT Suricata rules + RULES.md")
+    rl.add_argument("--out", type=str, default="rules", help="output directory")
+
     args = parser.parse_args(argv)
 
     if args.command == "fuzz":
         return _fuzz(args)
     if args.command == "pcap":
         return _pcap(args)
+    if args.command == "rules":
+        return _rules(args)
     if args.command == "run":
         profile = PROFILES[args.protocol]
         records = generate_dataset(args.benign, args.attacks, profile, args.seed)

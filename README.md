@@ -65,8 +65,17 @@ packages/
   otforge_yara       detection synthesis + false-positive validation for file formats
   otforge_scenario   canonical OT events + correlated Zeek/syslog/JSON emitters
   otforge_pcap       real Modbus/TCP + DNP3/TCP capture generation (valid checksums + DNP3 CRC)
-  otforge_cli        the `otforge` command (`run`, `fuzz`, `pcap`)
+  otforge_rules      native Suricata OT rules, false-positive-validated against the datasets
+  otforge_cli        the `otforge` command (`run`, `fuzz`, `pcap`, `rules`)
 ```
+
+## OT detection rules (`otforge rules`)
+
+Native Suricata `modbus` / `dnp3` rules for high-value OT abuse (diagnostics-function
+misuse, unauthorised register writes, invalid-gap scanning, DNP3 cold/warm restart and
+disable-unsolicited), each **false-positive-validated against the labelled datasets**:
+402 true positives, **0 false positives**. The rules live in [`rules/`](rules/); run
+`otforge rules` to regenerate them with the validation table.
 
 ## Labelled capture datasets (`otforge pcap`)
 

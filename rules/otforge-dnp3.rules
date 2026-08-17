@@ -1,0 +1,4 @@
+# OTFORGE DNP3 OT detection rules (Suricata). Apache-2.0.
+alert dnp3 any any -> any any (msg:"OTFORGE DNP3 cold restart"; dnp3_func:cold_restart; sid:2100010; rev:1; metadata:otforge attack illegal_function;)
+alert dnp3 any any -> any any (msg:"OTFORGE DNP3 warm restart"; dnp3_func:warm_restart; sid:2100011; rev:1; metadata:otforge attack illegal_function;)
+alert dnp3 any any -> any any (msg:"OTFORGE DNP3 disable unsolicited responses"; dnp3_func:21; sid:2100012; rev:1; metadata:otforge attack illegal_function;)

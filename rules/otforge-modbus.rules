@@ -1,0 +1,5 @@
+# OTFORGE MODBUS OT detection rules (Suricata). Apache-2.0.
+alert modbus any any -> any any (msg:"OTFORGE Modbus diagnostics function 8 (listen-only/restart vector)"; modbus:function 8; sid:2100001; rev:1; metadata:otforge attack illegal_function;)
+alert modbus any any -> any any (msg:"OTFORGE Modbus unauthorized write below setpoint bank"; modbus:access write holding, address <100; sid:2100002; rev:1; metadata:otforge attack unauthorized_write;)
+alert modbus any any -> any any (msg:"OTFORGE Modbus unauthorized write above setpoint bank"; modbus:access write holding, address >199; sid:2100003; rev:1; metadata:otforge attack unauthorized_write;)
+alert modbus any any -> any any (msg:"OTFORGE Modbus scan of invalid register gap 1000-1999"; modbus:access read holding, address 1000<>1999; sid:2100004; rev:1; metadata:otforge attack oob_scan;)
